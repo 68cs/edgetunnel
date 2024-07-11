@@ -61,7 +61,7 @@ export default {
 			const fakeUserIDMD5 = await MD5MD5(`${userID}${timestamp}`);
 			fakeUserID = fakeUserIDMD5.slice(0, 8) + "-" + fakeUserIDMD5.slice(8, 12) + "-" + fakeUserIDMD5.slice(12, 16) + "-" + fakeUserIDMD5.slice(16, 20) + "-" + fakeUserIDMD5.slice(20);
 			fakeHostName = fakeUserIDMD5.slice(6, 9) + "." + fakeUserIDMD5.slice(13, 19);
-			//console.log(`${fakeUserID}\n${fakeHostName}`); // 打印fakeID
+			console.log(`虚假UUID: ${fakeUserID}`); // 打印fakeID
 
 			proxyIP = env.PROXYIP || proxyIP;
 			proxyIPs = await ADD(proxyIP);
@@ -116,19 +116,24 @@ export default {
 					}
 					return new Response(JSON.stringify(request.cf, null, 4), { status: 200 });
 				case `/${fakeUserID}`:
+					noTLS = 'true'; 
 					const fakeConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, 'CF-Workers-SUB', RproxyIP, url);
 					return new Response(`${fakeConfig}`, { status: 200 });
 				case `/${userID}`: {
 					await sendMessage(`#获取订阅 ${FileName}`, request.headers.get('CF-Connecting-IP'), `UA: ${UA}</tg-spoiler>\n域名: ${url.hostname}\n<tg-spoiler>入口: ${url.pathname + url.search}</tg-spoiler>`);
-					if ((!sub || sub == '') && (addresses.length + addressesapi.length + addressesnotls.length + addressesnotlsapi.length + addressescsv.length) == 0){
-						if (request.headers.get('Host').includes(".workers.dev")) {
-							sub = 'workervless2sub-f1q.pages.dev'; 
-							subconfig = 'https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online.ini';
+					if (!sub || sub == ''){
+						if((addresses.length + addressesapi.length + addressesnotls.length + addressesnotlsapi.length + addressescsv.length) == 0){
+							if (request.headers.get('Host').includes(".workers.dev")) {
+								sub = 'workervless2sub-f1q.pages.dev'; 
+								subconfig = env.SUBCONFIG || 'https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online.ini';
+							} else {
+								sub = 'vless-4ca.pages.dev';
+								subconfig = env.SUBCONFIG || "https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini";
+							}
 						} else {
-							sub = 'vless-4ca.pages.dev';
-							subconfig = "https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/config/ACL4SSR_Online_Full_MultiMode.ini";
+							noTLS = 'true'; 
 						}
-					} 
+					}
 					const vlessConfig = await getVLESSConfig(userID, request.headers.get('Host'), sub, UA, RproxyIP, url);
 					const now = Date.now();
 					//const timestamp = Math.floor(now / 1000);
@@ -1296,21 +1301,18 @@ https://github.com/cmliu/edgetunnel
 		let newAddressesnotlscsv;
 
 		// 如果是使用默认域名，则改成一个workers的域名，订阅器会加上代理
-		if (hostName.includes(".workers.dev")){
-			fakeHostName = `${fakeHostName}.workers.dev`;
-			newAddressesnotlsapi = await getAddressesapi(addressesnotlsapi);
-			newAddressesnotlscsv = await getAddressescsv('FALSE');
-		} else if (hostName.includes(".pages.dev")){
+		if (hostName.includes(".pages.dev")){
 			fakeHostName = `${fakeHostName}.pages.dev`;
 		} else if (hostName.includes("worker") || hostName.includes("notls") || noTLS == 'true'){
-			fakeHostName = `notls.${fakeHostName}.net`;
+			noTLS = 'true';
+			fakeHostName = `${fakeHostName}.workers.dev`;
 			newAddressesnotlsapi = await getAddressesapi(addressesnotlsapi);
 			newAddressesnotlscsv = await getAddressescsv('FALSE');
 		} else {
 			fakeHostName = `${fakeHostName}.xyz`
 		}
-
-		let url = `https://${sub}/sub?host=${fakeHostName}&uuid=${fakeUserID}&edgetunnel=cmliu&proxyip=${RproxyIP}`;
+		console.log(`虚假HOST: ${fakeHostName}`);
+		let url = `${subProtocol}://${sub}/sub?host=${fakeHostName}&uuid=${fakeUserID}&edgetunnel=cmliu&proxyip=${RproxyIP}`;
 		let isBase64 = true;
 
 		if (!sub || sub == ""){
@@ -1341,6 +1343,7 @@ https://github.com/cmliu/edgetunnel
 			newAddressesapi = await getAddressesapi(addressesapi);
 			newAddressescsv = await getAddressescsv('TRUE');
 			url = `https://${hostName}/${fakeUserID}`;
+			console.log(`虚假订阅: ${url}`);
 		} 
 
 		if (!userAgent.includes(('CF-Workers-SUB').toLowerCase())){
@@ -1619,14 +1622,9 @@ function subAddresses(host,UUID,noTLS,newAddressesapi,newAddressescsv,newAddress
 			let 伪装域名 = host ;
 			let 最终路径 = '/?ed=2560' ;
 			let 节点备注 = '';
+			const 协议类型 = atob(啥啥啥_写的这是啥啊);
 			
-			if(proxyhosts.length > 0 && (伪装域名.includes('.workers.dev') || 伪装域名.includes('pages.dev'))) {
-				最终路径 = `/${伪装域名}${最终路径}`;
-				伪装域名 = proxyhosts[Math.floor(Math.random() * proxyhosts.length)];
-				节点备注 = ` 已启用临时域名中转服务，请尽快绑定自定义域！`;
-			}
-
-			const vlessLink = `vless://${UUID}@${address}:${port}?encryption=none&security=&type=ws&host=${伪装域名}&path=${encodeURIComponent(最终路径)}#${encodeURIComponent(addressid + 节点备注)}`;
+			const vlessLink = `${协议类型}://${UUID}@${address}:${port}?encryption=none&security=&type=ws&host=${伪装域名}&path=${encodeURIComponent(最终路径)}#${encodeURIComponent(addressid + 节点备注)}`;
 	
 			return vlessLink;
 
